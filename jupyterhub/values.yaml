@@ -3,15 +3,14 @@ custom: {}
 hub:
   service:
     type: ClusterIP
-    annotations:
-      prometheus.io/scrape: 'true'
-      prometheus.io/path: /hub/metrics
+    annotations: {}
     ports:
       nodePort:
     loadBalancerIP:
   baseUrl: /
   cookieSecret:
   publicURL:
+  initContainers: []
   uid: 1000
   fsGid: 1000
   nodeSelector: {}
@@ -52,7 +51,6 @@ hub:
       cpu: 200m
       memory: 512Mi
   services: {}
-  imagePullPolicy: IfNotPresent
   imagePullSecret:
     enabled: false
     registry:
@@ -88,8 +86,7 @@ proxy:
   chp:
     image:
       name: jupyterhub/configurable-http-proxy
-      tag: 3.0.0
-      pullPolicy: IfNotPresent
+      tag: 4.1.0
     resources:
       requests:
         cpu: 200m
@@ -98,14 +95,13 @@ proxy:
     image:
       name: quay.io/kubernetes-ingress-controller/nginx-ingress-controller
       tag: 0.15.0
-      pullPolicy: IfNotPresent
     proxyBodySize: 64m
+    hstsIncludeSubdomains: 'false'
     resources: {}
   lego:
     image:
       name: jetstack/kube-lego
       tag: 0.1.7
-      pullPolicy: IfNotPresent
     resources: {}
   labels: {}
   nodeSelector: {}
@@ -123,8 +119,8 @@ proxy:
       cert:
     secret:
       name: ''
-      key: 'tls.key'
-      crt: 'tls.crt'
+      key: tls.key
+      crt: tls.crt
     hosts: []
   networkPolicy:
     enabled: false
@@ -184,9 +180,9 @@ singleuser:
   events: true
   extraAnnotations: {}
   extraLabels:
-    hub.jupyter.org/network-access-hub: "true"
+    hub.jupyter.org/network-access-hub: 'true'
   extraEnv: {}
-  lifecycleHooks:
+  lifecycleHooks: {}
   initContainers: []
   extraContainers: []
   uid: 1000
@@ -233,8 +229,8 @@ singleuser:
 
 scheduling:
   userScheduler:
-    enabled: false
-    replicas: 1
+    enabled: true
+    replicas: 2
     logLevel: 4
     image:
       name: gcr.io/google_containers/kube-scheduler-amd64
@@ -270,7 +266,7 @@ prePuller:
       name: jupyterhub/k8s-image-awaiter
       tag: generated-by-chartpress
   continuous:
-    enabled: false
+    enabled: true
   extraImages: {}
   pause:
     image:

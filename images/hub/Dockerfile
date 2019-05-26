@@ -9,11 +9,16 @@ RUN apt-get update && \
       python3-dev \
       python3-pip \
       python3-setuptools \
-      python3-pycurl \
+      python3-wheel \
+      libssl-dev \
+      libcurl4-openssl-dev \
       build-essential \
       sqlite3 \
+      curl \
+      dnsutils \
       $(bash -c 'if [[ $JUPYTERHUB_VERSION == "git"* ]]; then \
-        echo npm; \
+        # workaround for https://bugs.launchpad.net/ubuntu/+source/nodejs/+bug/1794589
+        echo nodejs=8.10.0~dfsg-2ubuntu0.2 nodejs-dev=8.10.0~dfsg-2ubuntu0.2 npm; \
       fi') \
       && \
     apt-get purge && apt-get clean
@@ -32,7 +37,7 @@ RUN adduser --disabled-password \
     ${NB_USER}
 
 ADD requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir \
+RUN PYCURL_SSL_LIBRARY=openssl pip3 install --no-cache-dir \
          -r /tmp/requirements.txt \
          $(bash -c 'if [[ $JUPYTERHUB_VERSION == "git"* ]]; then \
             echo ${JUPYTERHUB_VERSION}; \

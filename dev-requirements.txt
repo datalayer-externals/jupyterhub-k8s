@@ -2,9 +2,9 @@
 # - builds images and can push them also (--push)
 # - updates image names and tags in values.yaml
 # - can publish the built Helm chart (--publish)
-chartpress==0.2.2
+chartpress==0.3.1
 
 # yamllint and pytest are important for local development, CI
-pytest==3.7.1
-requests==2.19.1
+pytest>=3.7.1
+requests
 yamllint>=1.1.1

@@ -5,10 +5,10 @@ python3 tools/templates/lint-and-validate.py
 # render & publish chart
 if [[
     "$TRAVIS_BRANCH" == "master" &&
-    "$KUBE_VERSION" == "1.10.0" &&
-    "$TRAVIS_PULL_REQUEST" == "false"
+    "$TRAVIS_PULL_REQUEST" == "false" &&
+    "$RUN_PUBLISH_SCRIPT" == "1"
 ]]; then
-    ./ci/deploy.sh
+    ./ci/publish-chart.sh
 else
     chartpress --commit-range ${TRAVIS_COMMIT_RANGE}
 fi

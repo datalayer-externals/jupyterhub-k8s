@@ -42,7 +42,7 @@ used by default, such as the `datascience-notebook
 <https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook>`_
 image containing useful tools and libraries for datascience, complete these steps:
 
-1. Modify your ``config.yaml`` file to specify the image. For example:
+#. Modify your ``config.yaml`` file to specify the image. For example:
 
    .. code-block:: yaml
 
@@ -63,17 +63,23 @@ image containing useful tools and libraries for datascience, complete these step
       ``latest`` as it might cause a several minute delay, confusion, or
       failures for users when a new version of the image is released.
 
-2. Apply the changes by following the directions listed in
-   `apply the changes`_.
-   
-   
+#. Apply the changes by following the directions listed in
+   :ref:`apply the changes <apply-config-changes>`.
+
+
    .. note::
-   
+
       If you have configured *prePuller.hook.enabled*, all the nodes in your
       cluster will pull the image before the the hub is upgraded to let users
       use the image. The image pulling may take several minutes to complete,
       depending on the size of the image.
 
+#. Restart your server from JupyterHub control panel if you are already logged in.
+
+.. note::
+
+   If you'd like users to select an environment from **multiple docker images**,
+   see :ref:`multiple-profiles`.
 
 
 .. _jupyterlab-by-default:
@@ -95,8 +101,9 @@ To let users use JupyterLab by default, add the following entries to your
      defaultUrl: "/lab"
 
    hub:
-     extraConfig: |-
-       c.Spawner.cmd = ['jupyter-labhub']
+     extraConfig:
+       jupyterlab: |
+         c.Spawner.cmd = ['jupyter-labhub']
 
 .. note::
 
@@ -131,15 +138,13 @@ by the Helm chart.
    # https://github.com/jupyter/docker-stacks/tree/master/minimal-notebook/Dockerfile
 
    # install additional package...
-   RUN pip install --yes astropy
+   RUN pip install --no-cache-dir astropy
 
 .. note:
 
    If you are using a private image registry, you may need to setup the image
    credentials. See the :ref:`helm-chart-configuration-reference` for more
    details on this.
-
-
 
 .. _set-env-vars:
 
@@ -151,8 +156,9 @@ variables`. While you can set them up in your Docker image if you build it
 yourself, it is often easier to configure your Helm chart through values
 provided in your :term:`config.yaml`.
 
-To set this up, edit your :term:`config.yaml` and `apply the changes`_. For
-example, this code snippet will set the environment variable ``EDITOR`` to the
+To set this up, edit your :term:`config.yaml` and
+:ref:`apply the changes <apply-config-changes>`.
+For example, this code snippet will set the environment variable ``EDITOR`` to the
 value ``vim``:
 
 .. code-block:: yaml
@@ -176,7 +182,7 @@ Python, for example, the following code reads an environment variable's value:
 
 .. _add-files-to-home:
 
-About user storage and adding files to it 
+About user storage and adding files to it
 -----------------------------------------
 
 It is important to understand the basics of how user storage is set up. By
@@ -190,9 +196,6 @@ A server can be shut down by *culling*. By default, JupyterHub's culling service
 is configured to cull a users server that has been inactive for one hour. Note
 that JupyterLab will autosave files, and as long as the file was within the
 users home directory no work is lost.
-
-
-
 
 .. note::
 
@@ -226,7 +229,7 @@ your user folders with a git repository.
 
 
 
-.. use-nbgitpuller:
+.. _use-nbgitpuller:
 
 Using ``nbgitpuller`` to synchronize a folder
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -266,10 +269,9 @@ using this tool.
    tool in production.
 
 
+.. _setup-conda-envs:
 
-.. setup-conda-envs:
-
-Allow users to create their own ``conda`` environments
+Allow users to create their own ``conda`` environments for notebooks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes you want users to be able to create their own ``conda`` environments.
@@ -292,10 +294,80 @@ across sessions. To resolve this, take the following steps:
   The text above will cause Anaconda to install new environments to this folder,
   which will persist across sessions.
 
+These environments are supposed to be used in notebooks, so a typical use case:
+
+1. Create one with at least a kernel, e.g. for Python it's ``conda create -n myenv ipykernel scipy``
+
+2. Now this env should be available in the list of kernels
 
 
-.. REFERENCES USED:
+.. _multiple-profiles:
 
-.. _apply the changes: extending-jupyterhub.html#apply-config-changes
-.. _downloading and installing Docker: https://www.docker.com/community-edition
-.. _pip: https://pip.readthedocs.io/en/latest/user_guide/#requirements-files
+Using multiple profiles to let users select their environment
+-------------------------------------------------------------
+
+You can create configurations for multiple user environments,
+and let users select from them once they log in to your JupyterHub. This
+is done by creating multiple **profiles**, each of which is attached to a set
+of configuration options that override your JupyterHub's default configuration
+(specified in your Helm Chart). This can be used to let users choose among many
+Docker images, to select the hardware on which they want their jobs to run,
+or to configure default interfaces such as Jupyter Lab vs. RStudio.
+
+Each configuration is a set of options for `Kubespawner <https://github.com/jupyterhub/kubespawner>`_,
+which defines how Kubernetes should launch a new user server pod. Any
+configuration options passed to the `profileList` configuration will
+overwrite the defaults in Kubespawner (or any configuration you've
+added elsewhere in your helm chart).
+
+Profiles are stored under ``singleuser.profileList``, and are defined as
+a list of profiles with specific configuration options each. Here's an example:
+
+.. code-block:: yaml
+
+   singleuser:
+     profileList:
+       - display_name: "Name to be displayed to users"
+         description: "Longer description for users."
+         # Configuration unique to this profile
+         kubespawner_override:
+           your_config: "Your value"
+         # Defines the default profile - only use for one profile
+         default: true
+
+The above configuration will show a screen with information about this profile
+displayed when users start a new server.
+
+Here's an example with two profiles that lets users select the environment they
+wish to use.
+
+.. code-block:: yaml
+
+   singleuser:
+     # Defines the default image
+     image:
+       name: jupyter/minimal-notebook
+       tag: 2343e33dec46
+     profileList:
+       - display_name: "Minimal environment"
+         description: "To avoid too much bells and whistles: Python."
+         default: true
+       - display_name: "Datascience environment"
+         description: "If you want the additional bells and whistles: Python, R, and Julia."
+         kubespawner_override:
+           image: jupyter/datascience-notebook:2343e33dec46
+       - display_name: "Spark environment"
+         description: "The Jupyter Stacks spark image!"
+         kubespawner_override:
+           image: jupyter/all-spark-notebook:2343e33dec46
+
+This allows users to select from three profiles, each with their own
+environment (defined by each Docker image in the configuration above).
+
+.. note::
+
+   You can also **control the HTML used for the profile selection page** by
+   using the Kubespawner ``profile_form_template`` configuration. See the
+   `Kubespawner configuration reference <https://jupyterhub-kubespawner.readthedocs.io/en/latest/spawner.html>`_
+   for more information.
+

@@ -100,7 +100,7 @@ set_config_if_not_none(
 
 for trait, cfg_key in (
     ('start_timeout', None),
-    ('image_pull_policy', None),
+    ('image_pull_policy', 'image.pullPolicy'),
     ('events_enabled', 'events'),
     ('extra_labels', None),
     ('extra_annotations', None),
@@ -272,22 +272,33 @@ elif auth_type == 'github':
 elif auth_type == 'cilogon':
     c.JupyterHub.authenticator_class = 'oauthenticator.CILogonOAuthenticator'
     for trait, cfg_key in common_oauth_traits:
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
         set_config_if_not_none(c.CILogonOAuthenticator, trait, 'auth.cilogon.' + cfg_key)
 elif auth_type == 'gitlab':
     c.JupyterHub.authenticator_class = 'oauthenticator.gitlab.GitLabOAuthenticator'
-    for trait, cfg_key in common_oauth_traits:
+    for trait, cfg_key in common_oauth_traits + (
+        ('gitlab_group_whitelist', None),
+        ('gitlab_project_id_whitelist', None),
+    ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
         set_config_if_not_none(c.GitLabOAuthenticator, trait, 'auth.gitlab.' + cfg_key)
 elif auth_type == 'mediawiki':
     c.JupyterHub.authenticator_class = 'oauthenticator.mediawiki.MWOAuthenticator'
     for trait, cfg_key in common_oauth_traits + (
         ('index_url', None),
     ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
         set_config_if_not_none(c.MWOAuthenticator, trait, 'auth.mediawiki.' + cfg_key)
 elif auth_type == 'globus':
     c.JupyterHub.authenticator_class = 'oauthenticator.globus.GlobusOAuthenticator'
     for trait, cfg_key in common_oauth_traits + (
         ('identity_provider', None),
     ):
+        if cfg_key is None:
+            cfg_key = camelCaseify(trait)
         set_config_if_not_none(c.GlobusOAuthenticator, trait, 'auth.globus.' + cfg_key)
 elif auth_type == 'hmac':
     c.JupyterHub.authenticator_class = 'hmacauthenticator.HMACAuthenticator'
@@ -427,6 +438,9 @@ if isinstance(extra_config, str):
     hub.extraConfig should be a dict of strings,
     but found a single string instead.
 
+    extraConfig as a single string is deprecated
+    as of the jupyterhub chart version 0.6.
+
     The keys can be anything identifying the
     block of extra configuration.
 
@@ -436,6 +450,10 @@ if isinstance(extra_config, str):
           extraConfig:
             myConfig: |
               {}
+
+    This configuration will still be loaded,
+    but you are encouraged to adopt the nested form
+    which enables easier merging of multiple extra configurations.
     """
     )
     print(

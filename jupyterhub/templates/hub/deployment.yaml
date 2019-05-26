@@ -54,12 +54,15 @@ spec:
       serviceAccountName: hub
       {{- end }}
       securityContext:
-        runAsUser: {{ .Values.hub.uid }}
         fsGroup: {{ .Values.hub.fsGid }}
       {{- if .Values.hub.imagePullSecret.enabled }}
       imagePullSecrets:
         - name: hub-image-credentials
       {{- end }}  
+      {{- if .Values.hub.initContainers }}
+      initContainers:
+        {{- .Values.hub.initContainers | toYaml | trimSuffix "\n" | nindent 8 }}
+      {{- end }}
       containers:
         {{- if .Values.hub.extraContainers }}
         {{- .Values.hub.extraContainers | toYaml | trimSuffix "\n" | nindent 8 }}
@@ -110,7 +113,13 @@ spec:
             {{- end }}
           resources:
             {{- .Values.hub.resources | toYaml | trimSuffix "\n" | nindent 12 }}
-          imagePullPolicy: {{ .Values.hub.imagePullPolicy }}
+          {{- with .Values.hub.image.pullPolicy }}
+          imagePullPolicy: {{ . }}
+          {{- end }}
+          securityContext:
+            runAsUser: {{ .Values.hub.uid }}
+            # Don't allow any process to execute as root inside the container
+            allowPrivilegeEscalation: false
           env:
             - name: PYTHONUNBUFFERED
               value: "1"

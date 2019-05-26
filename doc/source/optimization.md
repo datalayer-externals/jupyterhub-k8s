@@ -22,10 +22,6 @@ A reasonable final configuration for efficient autoscaling could look something
 like this:
 
 ```yaml
-prePuller:
-  continuous:
-    enabled: true
-
 scheduling:
   userScheduler:
     enabled: true
@@ -96,7 +92,7 @@ situations:
     come fresh without any images on their disks, a user pod arriving to this
     node will be forced to wait while the image is pulled.
 
-    With the *continuous-image-puller* enabled (**disabled** by default), the user's
+    With the *continuous-image-puller* enabled (**enabled** by default), the user's
     container image will be pulled when a new node is added. New nodes can for
     example be added manually or by a cluster autoscaler. The continuous
     image-puller uses a
@@ -104,14 +100,14 @@ situations:
     to force Kubernetes to pull the user image on all nodes as soon as a node is
     present.
 
-    The continuous-image-puller is disabled by default. To enable it, use the
+    The continuous-image-puller is enabled by default. To disable it, use the
     following snippet in your `config.yaml`:
 
     ```yaml
     prePuller:
       continuous:
         # NOTE: if used with a Cluster Autoscaler, also add user-placeholders
-        enabled: true
+        enabled: false
     ```
 
     It is important to realize that if the continuous-image-puller together with
@@ -134,7 +130,7 @@ the following paths:
 - `singleuser.image`
 - `singleuser.profileList[].kubespawner_override.image`
 - `singleuser.extraContainers[].image`
-- `prePuller.extraImages[].someName`
+- `prePuller.extraImages.someName`
 
 #### Additional sources
 - `singleuser.networkTools.image`
@@ -163,6 +159,10 @@ prePuller:
     myOtherImageIWantPulled:
       name: jupyter/all-spark-notebook
       tag: 2343e33dec46
+```
+
+```eval_rst
+.. _efficient-cluster-autoscaling:
 ```
 
 ## Efficient Cluster Autoscaling
@@ -245,9 +245,9 @@ This section about scaling down efficiently, will also explains how the *user
 scheduler* can help you reduce the failures to scale down due to blocking user
 pods.
 
-#### Using a user dedicated node pool
+#### Using a dedicated node pool for users
 
-To set up a user dedicated node pool, we can use [*taints and
+To set up a dedicated node pool for user pods, we can use [*taints and
 tolerations*](https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/).
 If we add a taint to all the nodes in the node pool, and a toleration on the
 user pods to tolerate being scheduled on a tainted node, we have practically
@@ -332,5 +332,5 @@ scheduling:
 ```
 
 **NOTE**: For the user scheduler to work well, you need old user pods to shut
-down at some point. Make sure to configure the
-[*culler*](user-management.html#culling-user-pods) suitable properly.
+down at some point. Make sure to properly configure the
+[*culler*](user-management.html#culling-user-pods).

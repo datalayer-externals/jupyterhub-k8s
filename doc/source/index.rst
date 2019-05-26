@@ -19,6 +19,8 @@ page`_. If you have tips or deployments that you would like to share, see
 
 This documentation is for jupyterhub chart version |release|, which deploys JupyterHub |hub_version|.
 
+This version of the chart requires kubernetes ≥1.11 and helm ≥2.11.
+
 
 .. _about-guide:
 
@@ -28,7 +30,7 @@ What To Expect
 This guide will help you deploy and customize your own JupyterHub on a cloud.
 While doing this, you will gain valuable experience with:
 
-* **A cloud provider** such Google Cloud, Microsoft Azure, Amazon EC2...
+* **A cloud provider** such Google Cloud, Microsoft Azure, Amazon EC2, IBM Cloud...
 * **Kubernetes** to manage resources on the cloud
 * **Helm** to configure and control the packaged JupyterHub installation
 * **JupyterHub** to give users access to a Jupyter computing environment
@@ -144,7 +146,7 @@ up, managing, and maintaining JupyterHub.
 
 We hope that you will use this section to share deployments with on a variety
 of infrastructure and for different use cases.
-There is also a `community maintained list <users-list.html>`_ of users of this
+There is also a :doc:`community maintained list <users-list>` of users of this
 Guide and the JupyterHub Helm Chart.
 
 Please submit a pull request to add to this section. Thanks.
