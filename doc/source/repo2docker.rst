@@ -1,3 +1,5 @@
+:orphan:
+
 .. This is a backup of the repo2docker instructions from user-environment.rst
 
 .. _r2d-custom-image:
@@ -145,7 +147,7 @@ to configure JupyterHub to build off of this image:
    .. note::
 
       The contents of your GitHub repository might not show up if you have
-      enabled :doc:`persistent storage <user-storage>`. Disable persistent
+      enabled :ref:`persistent storage <user-storage>`. Disable persistent
       storage if you want the Git repository contents to show up.
 
 9. **Enjoy your new computing environment!**
@@ -157,5 +159,5 @@ to configure JupyterHub to build off of this image:
 .. REFERENCES USED:
 
 .. _repo2docker: https://github.com/jupyter/repo2docker
-.. _downloading and installing Docker: https://www.docker.com/community-edition
-.. _pip: https://pip.readthedocs.io/en/latest/user_guide/#requirements-files
+.. _downloading and installing Docker: https://docs.docker.com/get-docker/
+.. _pip: https://pip.pypa.io/en/latest/user_guide/#requirements-files

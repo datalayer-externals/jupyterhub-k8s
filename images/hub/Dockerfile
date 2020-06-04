@@ -1,10 +1,14 @@
 FROM ubuntu:18.04
 
-ARG JUPYTERHUB_VERSION=1.0.*
+## NOTE: This is a default and be overridden by chartpress using the
+##       chartpress.yaml configuration
+ARG JUPYTERHUB_VERSION=1.1.*
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       git \
+      vim \
+      less \
       python3 \
       python3-dev \
       python3-pip \
@@ -36,7 +40,8 @@ RUN adduser --disabled-password \
     --force-badname \
     ${NB_USER}
 
-ADD requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --upgrade --no-cache setuptools pip
+COPY requirements.txt /tmp/requirements.txt
 RUN PYCURL_SSL_LIBRARY=openssl pip3 install --no-cache-dir \
          -r /tmp/requirements.txt \
          $(bash -c 'if [[ $JUPYTERHUB_VERSION == "git"* ]]; then \
@@ -44,11 +49,6 @@ RUN PYCURL_SSL_LIBRARY=openssl pip3 install --no-cache-dir \
           else \
             echo jupyterhub==${JUPYTERHUB_VERSION}; \
           fi')
-
-ADD jupyterhub_config.py /srv/jupyterhub_config.py
-
-ADD z2jh.py /usr/local/lib/python3.6/dist-packages/z2jh.py
-ADD cull_idle_servers.py /usr/local/bin/cull_idle_servers.py
 
 WORKDIR /srv/jupyterhub
 
@@ -58,5 +58,12 @@ RUN chown ${NB_USER}:${NB_USER} /srv/jupyterhub
 # JupyterHub API port
 EXPOSE 8081
 
+# when building the dependencies image
+# add pip-tools necessary for computing dependencies
+# this is not done in production builds by chartpress
+ARG PIP_TOOLS=
+RUN test -z "$PIP_TOOLS" || pip install --no-cache pip-tools==$PIP_TOOLS
+
 USER ${NB_USER}
-CMD ["jupyterhub", "--config", "/srv/jupyterhub_config.py"]
+CMD ["jupyterhub", "--config", "/etc/jupyterhub/jupyterhub_config.py"]
+
