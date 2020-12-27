@@ -74,7 +74,7 @@ situations:
 
     **NOTE**: With this enabled your `helm upgrade` will take a long time if you
     introduce a new image as it will wait for the pulling to complete. We
-    recommend that you add `--timeout 600` or similar to your `helm upgrade`
+    recommend that you add `--timeout 10m0s` or similar to your `helm upgrade`
     command to give it enough time.
 
     The hook-image-puller is enabled by default. To disable it, use the
@@ -189,10 +189,12 @@ requires it. At this time, the lower priority pod will get preempted to make
 room for the high priority pod. This now evicted user-placeholder will now be
 able to signal to the CA that it needs to scale up.
 
-The user placeholders will have the same resources requests as the default user.
-This means that if you have three user placeholders running, real users will
-only need to wait for a scale up if more than three users arrive in an interval
-of time less than it takes to make a node ready for use.
+The user placeholders will have the same resources requests/limits as the Helm
+chart is configured under `singleuser.cpu` and `singleuser.memory`. This means
+that if you have three user placeholders running, real users will only need to
+wait for a scale up if _more than three users arrive in an interval of time less
+than it takes to make a node ready for use_, assuming these users didn't spawn
+with adjusted resource requests as specified in `singleuser.profileList`.
 
 To use three user placeholders for example, that can do their job thanks to pod
 priority, add the following configuration:
@@ -211,11 +213,12 @@ For further discussion about user placeholders, see [@MinRK's excellent
 post](https://discourse.jupyter.org/t/planning-placeholders-with-jupyterhub-helm-chart-0-8-tested-on-mybinder-org/213)
 where he analyzed its introduction on mybinder.org.
 
-**IMPORTANT**: Further settings may be required for successful use of the pod
+```{important}
+Further settings may be required for successful use of the pod
 priority depending on how your cluster autoscaler is configured. This is known
 to work on GKE, but we don't know how it works on other cloud providers or
-kubernetes. See the [configuration
-reference](/reference/reference.html#scheduling-podpriority) for more details.
+kubernetes. See the {ref}`configuration reference <schema:scheduling.podPriority>`) for more details.
+```
 
 ### Scaling down efficiently
 
@@ -230,7 +233,7 @@ and some JupyterHub pods (without a permissive
 Consider for example that many users arrive to your JupyterHub during the
 daytime. New nodes are added by the CA. Some system pod ends up on the new nodes
 along with the user pods for some reason. At night when the
-[*culler*](user-management.html#culling-user-pods) has removed many inactive
+[*culler*](/customizing/user-management.html#culling-user-pods) has removed many inactive
 pods from some nodes. They are now free from user pods but there is still a
 single system pod stopping the CA from removing the node.
 
@@ -332,3 +335,41 @@ scheduling:
 **NOTE**: For the user scheduler to work well, you need old user pods to shut
 down at some point. Make sure to properly configure the
 [*culler*](user-management.html#culling-user-pods).
+
+## Balancing "guaranteed" vs "maximum" memory and CPU
+
+You have the ability to [choose a "guarantee" and a "limit"](memory-cpu-limits) for both memory and CPU available to users.
+This allows you to make a more efficient use of your cloud resources, but how do you choose the right "ratio" of "guaranteed / limit"?
+Here is an example scenario to help you decide a strategy.
+
+Consider a JupyterHub with 100G of RAM per node.
+Users of the hub are expected to _occasionally_ use 20G each, so you begin by giving each of them a _guarantee_ of 20G of RAM.
+This means that any time a user starts their session, 20G of RAM on the node is reserved for them.
+Each node can fit 5 users (100G / 20G per user = 5 users).
+
+However, you notice that in practice, most users have just 1G of RAM being used, and _very occasionally_ use the full 20G.
+This means that your hub often has 80 to 90G of RAM _reserved but not used_.
+You are paying for resources that you don't usually need.
+
+Using resource _limits_ and _guarantees_, you can use your cloud resources more efficiently. Resource _limits_ define a maximum, while resource _guarantees_ define a minimum.
+The ratio of these two numbers is the _limit to guarantee ratio_.
+In the above case, your _limit to guarantee ratio_ is `1:1`.
+
+If you set a *guarantee* of 1GB and a *limit* of 20GB then you have a _limit to guarantee ratio_ of `20:1`.
+Your node will fit many more users on average.
+When a user starts a session, if there is at least 1GB of RAM available on the node then their session will start there.
+If not, a new node will be created (and your costs just went up).
+
+However, say there are now 50 users on this node.
+Technically, it is still well under the node's maximum allowed number, since each user only has a guarantee of 1G RAM and we have 100G total.
+If 10 of those users suddenly load in a 10GB dataset, we've now requested `(10 * 10GB) + (40 * 1GB) = 140GB used RAM`.
+Uh oh, we are now well over the 100GB limit, and user sessions will start crashing.
+This is what happens when your _limit to guarantee ratio_ is too big.
+
+The problem? Your user's behavior was not the right fit for your _limit to guarantee ratio_.
+You should *increase* the guaranteed amount of RAM for each user, so that in general fewer users will be on a given node, and they are less-likely to saturate that node's memory by asking for RAM all at once.
+
+Choosing the right _limit to guarantee ratio_ ratio is an art, not a science.
+We suggest **starting with a ratio of 2 to 1** and adjusting from there based on whether you run into problems on your hub.
+For example, if the limit is 10GB, start with a guarantee of 5GB.
+Use a service such as Prometheus + Grafana to monitor the memory usage over time, and use this to decide whether to adjust your ratio.

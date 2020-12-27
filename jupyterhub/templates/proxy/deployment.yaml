@@ -35,7 +35,8 @@ spec:
       {{- if .Values.scheduling.podPriority.enabled }}
       priorityClassName: {{ .Release.Name }}-default-priority
       {{- end }}
-      nodeSelector: {{ toJson .Values.proxy.nodeSelector }}
+      nodeSelector: {{ toJson .Values.proxy.chp.nodeSelector }}
+      tolerations: {{ toJson .Values.proxy.chp.tolerations }}
       {{- include "jupyterhub.coreAffinity" . | nindent 6 }}
       {{- if $manualHTTPS }}
       volumes:
@@ -48,16 +49,19 @@ spec:
           secret:
             secretName: {{ .Values.proxy.https.secret.name }}
       {{- end }}
+      {{- with include "jupyterhub.imagePullSecrets" (dict "root" . "image" .Values.proxy.chp.image) }}
+      imagePullSecrets: {{ . }}
+      {{- end }}
       containers:
         - name: chp
           image: {{ .Values.proxy.chp.image.name }}:{{ .Values.proxy.chp.image.tag }}
           command:
             - configurable-http-proxy
-            - '--ip=::'
-            - '--api-ip=::'
+            - "--ip=::"
+            - "--api-ip=::"
             - --api-port=8001
-            - --default-target=http://$(HUB_SERVICE_HOST):$(HUB_SERVICE_PORT)
-            - --error-target=http://$(HUB_SERVICE_HOST):$(HUB_SERVICE_PORT)/hub/error
+            - --default-target=http://hub:$(HUB_SERVICE_PORT)
+            - --error-target=http://hub:$(HUB_SERVICE_PORT)/hub/error
             {{- if $manualHTTPS }}
             - --port=8443
             - --redirect-port=8000
@@ -76,6 +80,9 @@ spec:
             {{- if .Values.debug.enabled }}
             - --log-level=debug
             {{- end }}
+            {{- range .Values.proxy.chp.extraCommandLineFlags }}
+            - {{ tpl . $ }}
+            {{- end }}
           {{- if or $manualHTTPS $manualHTTPSwithsecret }}
           volumeMounts:
             - name: tls-secret
@@ -84,19 +91,13 @@ spec:
           {{- end }}
           resources:
             {{- .Values.proxy.chp.resources | toYaml | trimSuffix "\n" | nindent 12 }}
-          securityContext:
-            # Don't allow any process to execute as root inside the container
-            allowPrivilegeEscalation: false
           env:
             - name: CONFIGPROXY_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  {{- if .Values.hub.existingSecret }}
-                  name: {{ .Values.hub.existingSecret }}
-                  {{- else }}
-                  name: hub-secret
-                  {{- end }}
+                  name: {{ .Values.hub.existingSecret | default "hub-secret" }}
                   key: proxy.token
+            {{- include "jupyterhub.extraEnv" .Values.proxy.chp.extraEnv | nindent 12 }}
           {{- with .Values.proxy.chp.image.pullPolicy }}
           imagePullPolicy: {{ . }}
           {{- end }}
@@ -136,4 +137,8 @@ spec:
               port: http
               scheme: HTTP
               {{- end }}
+          {{- end }}
+          {{- with .Values.proxy.chp.containerSecurityContext }}
+          securityContext:
+            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
           {{- end }}

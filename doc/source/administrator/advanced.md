@@ -195,13 +195,13 @@ in kubernetes that as a long list of cool use cases. Some example use cases are:
 2. Servers / other daemons that are used by code in your `hub.customConfig`
 
 The items in this list must be valid kubernetes
-[container specifications](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core).
+[container specifications](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#container-v1-core).
 
 ### Specifying suitable hub storage
 
 By default, the hub's sqlite-pvc setting will dynamically create a disk to store
-the sqlite database. It is possible to [configure other storage
-classes](reference/reference.html#hub-db-type) under hub.db.pvc, but make sure
+the sqlite database. It is possible to {ref}`configure other storage classes <schema:hub.db.type>`
+under hub.db.pvc, but make sure
 to choose one that the hub can write quickly and safely to. Slow or higher
 latency storage classes can cause hub operations to lag which may ultimately
 lead to HTTP errors in user environments.

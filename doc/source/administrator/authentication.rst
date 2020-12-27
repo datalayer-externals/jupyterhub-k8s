@@ -96,7 +96,7 @@ but we recommend ``read:user`` as this requires no additional configuration by
 GitHub organisations and users.
 For example, omitting the scope means members of an organisation must `set
 their membership to Public
-<https://help.github.com/en/github/setting-up-and-managing-your-github-user-account/publicizing-or-hiding-organization-membership>`_
+<https://docs.github.com/en/github/setting-up-and-managing-your-github-user-account/publicizing-or-hiding-organization-membership>`_
 to login, whereas setting it to ``read:org`` may require approval of the
 application by a GitHub organisation admin.
 Please see `this issue
@@ -124,7 +124,8 @@ For more information on authenticating with Google oauth, see the :ref:`google_o
        clientId: "yourlongclientidstring.apps.googleusercontent.com"
        clientSecret: "adifferentlongstring"
        callbackUrl: "http://<your_jupyterhub_host>/hub/oauth_callback"
-       hostedDomain: "youruniversity.edu"
+       hostedDomain:
+         - "youruniversity.edu"
        loginService: "Your University"
 
 CILogon
@@ -142,7 +143,7 @@ CILogon
 In order to overcome the `caveats <https://github.com/jupyterhub/oauthenticator/blob/master/oauthenticator/cilogon.py>`_ of implementing CILogon OAuthAuthenticator for JupyterHub,
 i.e. default username_claim of ePPN does not work for all providers, e.g. generic OAuth such as Google, Use c.CILogonOAuthenticator.username_claim = 'email' to use email instead of ePPN as the JupyterHub username:
 
-Add to your config.yaml file to `inject extra python based configuration that should be in jupyterhub_config.py </reference/reference.html#hub-extraconfig>`_ as below:
+Add to your config.yaml file to :ref:`inject extra python based configuration that should be in jupyterhub_config.py <schema:hub.extraConfig>` as below:
 
 .. code-block:: yaml
 
@@ -228,6 +229,30 @@ and obtain the confidential client credentials.
          userdata_params: {'state': 'state'}
          username_key: preferred_username
 
+Auth0
+^^^^^
+
+Auth0 is a popular commercial provider of identity management. The JupyterHub helm chart does not include support for
+Auth0 by default.  To use Auth0, ``extraEnv`` and ``extraConfig`` must be configured as follows:
+
+Note that without the scope defined, authenticating to JupyterHub after already being logged in to Auth0 will fail.
+
+.. code-block:: yaml
+
+    hub:
+      extraEnv:
+        AUTH0_SUBDOMAIN: 'prod-8ua-1yy9'
+      extraConfig:
+        myConfig.py: |
+          c.JupyterHub.authenticator_class = 'oauthenticator.auth0.Auth0OAuthenticator'
+          c.Auth0OAuthenticator.client_id = 'client-id-from-auth0-here'
+          c.Auth0OAuthenticator.client_secret = 'client-secret-from-auth0-here'
+          c.Auth0OAuthenticator.oauth_callback_url = 'https://<your_jupyterhub_host>/hub/oauth_callback'
+          c.Auth0OAuthenticator.scope = ['openid', 'email']
+          c.Authenticator.admin_users = {
+              'devops@example.com'
+          }
+          c.Authenticator.auto_login = True
 .. _google_oauth:
 
 Full Example of Google OAuth2
@@ -294,7 +319,9 @@ Authenticating with LDAP
 
 JupyterHub supports LDAP and Active Directory authentication.
 Read the `ldapauthenticator <https://github.com/jupyterhub/ldapauthenticator>`_
-documentation for a full explanation of the available parameters.
+documentation for a full explanation of the available parameters. The full mapping
+between parameters set in ``values.yaml`` and ``ldapauthenticator`` parameter names can be 
+found in `jupyterhub_config.py <https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/master/jupyterhub/files/hub/jupyterhub_config.py#L353>`_. 
 
 Example LDAP Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -344,12 +371,42 @@ This example is equivalent to that given in the
          - 'cn=researcher,ou=groups,dc=wikimedia,dc=org'
          - 'cn=operations,ou=groups,dc=wikimedia,dc=org'
 
+Example Auth0 Configuration
+---------------------------
+
+Auth0 (even on free billing plan) allows you to leverage its OAuth flow. It is based on OpenID Connect implementation, but extends it. Assuming the application is already created and you fetched Client Id, Client Secret and Auth0 authorization domain.
+
+.. code-block:: yaml
+
+   hub:
+     extraEnv:
+       OAUTH_CALLBACK_URL: https://<HUB_DOMAIN>/hub/oauth_callback
+   auth:
+     type: custom
+     scopes: # that is essential to request certain scope, otherwise user profile call won't return anything
+       - "openid"
+       - "name"
+       - "profile"
+       - "email"
+     custom:
+       className: oauthenticator.generic.GenericOAuthenticator
+       config:
+         login_service: "My Auth0"
+         client_id: "<CLIENT_ID>"
+         client_secret: "<CLIENT_SECRET>"
+         authorize_url: https://<DOMAIN>.us.auth0.com/authorize
+         token_url: https://<DOMAIN>.us.auth0.com/oauth/token
+         userdata_url: https://<DOMAIN>.us.auth0.com/userinfo
+         userdata_method: GET
+         username_key: name # define the specific key to for username from JSON returned by `/userinfo`
+
+
 
 Adding a Whitelist
 ------------------
 
 JupyterHub can be configured to only allow a specified
-`whitelist <https://jupyterhub.readthedocs.io/en/latest/getting-started/authenticators-users-basics.html#create-a-whitelist-of-users>`_
+`whitelist <https://jupyterhub.readthedocs.io/en/latest/getting-started/authenticators-users-basics.html#create-a-set-of-allowed-users>`_
 of users to login. This is especially useful if you are
 using an authenticator with an authentication service open to the general
 public, such as GitHub or Google.
