@@ -2,54 +2,45 @@
 
 # Installing JupyterHub
 
-Now that we have a {doc}`Kubernetes cluster </kubernetes/setup-kubernetes>` and {doc}`Helm
-</kubernetes/setup-helm>` setup, we can proceed by using Helm to install JupyterHub
-and related {term}`Kubernetes resources <Kubernetes resource>` using a
-{term}`Helm chart`.
+With a {doc}`Kubernetes cluster </kubernetes/setup-kubernetes>` cluster
+available and {doc}`Helm </kubernetes/setup-helm>` installed, we can install
+JupyterHub in the Kubernetes cluster using the JupyterHub Helm chart.
 
-## Prepare configuration file
+## Initialize a Helm chart configuration file
 
-In this step we will prepare a [YAML](https://en.wikipedia.org/wiki/YAML)
-configuration file that we will refer to as `config.yaml`. It will contain the multiple
-{term}`Helm values` to be provided to a JupyterHub {term}`Helm chart` developed
-specifically together with this guide.
+Helm charts' contain {term}`templates <Helm template>` that can be rendered to
+the {term}`Kubernetes resources <Kubernetes resource>` to be installed. A user
+of a Helm chart can override the chart's default values to influence how the
+templates render.
 
-Helm charts contains {term}`templates
-<Helm template>` that with provided values will render to {term}`Kubernetes
-resources <Kubernetes resource>` to be installed in a Kubernetes cluster. This
-config file will provide the values to be used by our Helm chart.
+In this step we will initialize a chart configuration file for you to adjust
+your installation of JupyterHub. We will name and refer to it as `config.yaml`
+going onwards.
 
-1. Generate a random hex string representing 32 bytes to use as a security
-   token. Run this command in a terminal and copy the output:
+```{admonition} Introduction to YAML
+If you haven't worked with YAML before, investing some
+minutes [learning about it]([YAML](https://www.youtube.com/watch?v=cdLNKUoMc6c)
+will likely be worth your time.
+```
 
-   ```{code-block} bash
-   
-   openssl rand -hex 32
+As of version 1.0.0, you don't need any configuration to get started so you can
+just create a `config.yaml` file with some helpful comments.
 
-   ```
-2. Create and start editing a file called `config.yaml`. In the code snippet
-   below we start the widely available [nano editor](https://en.wikipedia.org/wiki/GNU_nano), but any editor will do.
+```yaml
+# This file can update the JupyterHub Helm chart's default configuration values.
+#
+# For reference see the configuration reference and default values, but make
+# sure to refer to the Helm chart version of interest to you!
+#
+# Introduction to YAML:     https://www.youtube.com/watch?v=cdLNKUoMc6c
+# Chart config reference:   https://zero-to-jupyterhub.readthedocs.io/en/stable/resources/reference.html
+# Chart default values:     https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/HEAD/jupyterhub/values.yaml
+# Available chart versions: https://jupyterhub.github.io/helm-chart/
+#
+```
 
-   ```
-   nano config.yaml
-   ```
-3. Write the following into the `config.yaml` file but instead of writing
-   `<RANDOM-HEX>` paste the generated hex string you copied in step 1.
-
-   ```
-   proxy:
-     secretToken: "<RANDOM_HEX>"
-   ```
-
-   It is common practice for Helm and Kubernetes YAML files to indent using
-   two spaces.
-4. Save the `config.yaml` file. In the nano editor this is done by pressing **CTRL+X** or
-   **CMD+X** followed by a confirmation to save the changes.
-
-<!---
-Don't put an example here! People will just copy paste that & that's a
-security issue.
--->
+In case you are working from a terminal and are unsure how to create this file,
+can try with `nano config.yaml`.
 
 ## Install JupyterHub
 
@@ -70,55 +61,48 @@ security issue.
    ...Successfully got an update from the "jupyterhub" chart repository
    Update Complete. ⎈ Happy Helming!⎈
    ```
+
 2. Now install the chart configured by your `config.yaml` by running this
    command from the directory that contains your `config.yaml`:
 
    ```
-   # Suggested values: advanced users of Kubernetes and Helm should feel
-   # free to use different values.
-   RELEASE=jhub
-   NAMESPACE=jhub
-   
    helm upgrade --cleanup-on-fail \
-     --install $RELEASE jupyterhub/jupyterhub \
-     --namespace $NAMESPACE \
+     --install <helm-release-name> jupyterhub/jupyterhub \
+     --namespace <k8s-namespace> \
      --create-namespace \
-     --version=0.10.6 \
+     --version=<chart-version> \
      --values config.yaml
    ```
 
    where:
 
-   - `RELEASE` refers to a [Helm release name](https://helm.sh/docs/glossary/#release), an identifier used to
+   - `<helm-release-name>` refers to a [Helm release name](https://helm.sh/docs/glossary/#release), an identifier used to
      differentiate chart installations. You need it when you are changing or
      deleting the configuration of this chart installation. If your Kubernetes
      cluster will contain multiple JupyterHubs make sure to differentiate them.
      You can list your Helm releases with `helm list`.
-   - `NAMESPACE` refers to a [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/),
+   - `<k8s-namespace>` refers to a [Kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/),
      an identifier used to group Kubernetes resources, in this case all
      Kubernetes resources associated with the JupyterHub chart. You'll need the
      namespace identifier for performing any commands with `kubectl`.
-
-   * This step may take a moment, during which time there will be no output
+   - This step may take a moment, during which time there will be no output
      to your terminal. JupyterHub is being installed in the background.
-   * If you get a `release named <YOUR-RELEASE-NAME> already exists` error,
-     then you should delete the release by running `helm delete
-     <YOUR-RELEASE-NAME>`. Then reinstall by repeating this step. If it
-     persists, also do `kubectl delete namespace <YOUR-NAMESPACE>` and try
-     again.
-   * In general, if something goes *wrong* with the install step, delete the
-     Helm release by running `helm delete <YOUR-RELEASE-NAME>`
+   - If you get a `release named <helm-release-name> already exists` error, then
+     you should delete the release by running `helm delete <helm-release-name>`.
+     Then reinstall by repeating this step. If it persists, also do `kubectl delete namespace <k8s-namespace>` and try again.
+   - In general, if something goes _wrong_ with the install step, delete the
+     Helm release by running `helm delete <helm-release-name>`
      before re-running the install command.
-   * If you're pulling from a large Docker image you may get a
+   - If you're pulling from a large Docker image you may get a
      `Error: timed out waiting for the condition` error, add a
-     `--timeout=<NUMBER-OF-MINUTES>m<NUMBER-OF-SECONDS>s` parameter to the `helm
-     install` command.
-   * The `--version` parameter corresponds to the *version of the Helm
-     chart*, not the version of JupyterHub. Each version of the JupyterHub
+     `--timeout=<number-of-minutes>m` parameter to the `helm` command.
+   - The `--version` parameter corresponds to the _version of the Helm
+     chart_, not the version of JupyterHub. Each version of the JupyterHub
      Helm chart is paired with a specific version of JupyterHub. E.g.,
-     `0.7.0` of the Helm chart runs JupyterHub `0.9.2`.
+     `0.11.1` of the Helm chart runs JupyterHub `1.3.0`.
      For a list of which JupyterHub version is installed in each version
-     of the Z2JH Helm Chart, see the [Helm Chart repository](https://github.com/jupyterhub/helm-chart#release-notes).
+     of the JupyterHub Helm Chart, see the [Helm Chart repository](https://jupyterhub.github.io/helm-chart/).
+
 3. While Step 2 is running, you can see the pods being created by entering in
    a different terminal:
 
@@ -130,21 +114,23 @@ security issue.
    and set a default value for the `--namespace` flag:
 
    ```
-   kubectl config set-context $(kubectl config current-context) --namespace ${NAMESPACE:-jhub}
+   kubectl config set-context $(kubectl config current-context) --namespace <k8s-namespace>
    ```
-4. Wait for the *hub* and *proxy* pod to enter the `Running` state.
+
+4. Wait for the _hub_ and _proxy_ pod to enter the `Running` state.
 
    ```
    NAME                    READY     STATUS    RESTARTS   AGE
    hub-5d4ffd57cf-k68z8    1/1       Running   0          37s
    proxy-7cb9bc4cc-9bdlp   1/1       Running   0          37s
    ```
+
 5. Find the IP we can use to access the JupyterHub. Run the following command
    until the `EXTERNAL-IP` of the `proxy-public` [service](https://kubernetes.io/docs/concepts/services-networking/service/) is
    available like in the example output.
 
    ```
-   kubectl get service --namespace jhub
+   kubectl get service --namespace <k8s-namespace>
    ```
 
    ```
@@ -158,19 +144,18 @@ security issue.
    can find the longer version by calling:
 
    ```
-   kubectl describe service proxy-public --namespace jhub
+   kubectl describe service proxy-public --namespace <k8s-namespace>
    ```
 
-7. To use JupyterHub, enter the external IP for the `proxy-public` service in
-   to a browser. JupyterHub is running with a default *dummy* authenticator so
+6. To use JupyterHub, enter the external IP for the `proxy-public` service in
+   to a browser. JupyterHub is running with a default _dummy_ authenticator so
    entering any username and password combination will let you enter the hub.
 
-Congratulations! Now that you have basic JupyterHub running, you can {ref}`extend it
-<extending-jupyterhub>` and {ref}`optimize it <optimization>` in many
+Congratulations! Now that you have basic JupyterHub running, you can {ref}`extend it <extending-jupyterhub>` and {ref}`optimize it <optimization>` in many
 ways to meet your needs.
 
 Some examples of customizations are:
 
-* Configure the login to use the account that makes sense to you (Google, GitHub, etc.).
-* Use a suitable pre-built image for the user container or build your own.
-* Host it on <https://your-domain.com>.
+- Configure the login to use the account that makes sense to you (Google, GitHub, etc.).
+- Use a suitable pre-built image for the user container or build your own.
+- Host it on <https://your-domain.com>.

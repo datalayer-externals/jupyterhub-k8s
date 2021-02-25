@@ -5,18 +5,56 @@ imagePullSecret:
   username: U
   email: e@domain.com
   password: P
-imagePullSecrets: [a,b]
+imagePullSecrets: [a, b]
 
 hub:
+  extraFiles:
+    my_config:
+      mountPath: /usr/local/etc/jupyterhub/jupyterhub_config.d/my_config.py
+      stringData: |
+        with open("/tmp/created-by-extra-files-config.txt", "w") as f:
+            f.write("hello world!")
+    binaryData1: &binaryData1
+      mountPath: /tmp/binaryData.txt
+      mode: 0666
+      binaryData: |
+        aGVsbG8gd
+        29ybGQhCg==
+    binaryData2: &binaryData2
+      mountPath: /tmp/dir1/binaryData.txt
+      mode: 0666
+      binaryData: aGVsbG8gd29ybGQhCg==
+    stringData1: &stringData1
+      mountPath: /tmp/stringData.txt
+      mode: 0666
+      stringData: hello world!
+    stringData2: &stringData2
+      mountPath: /tmp/dir1/stringData.txt
+      mode: 0666
+      stringData: hello world!
+    data-yaml: &data-yaml
+      mountPath: /etc/test/data.yaml
+      mode: 0444
+      data:
+        config:
+          map:
+            number: 123
+            string: "hi"
+          list: [1, 2]
+    data-yml: &data-yml
+      <<: *data-yaml
+      mountPath: /etc/test/data.yml
+    data-json: &data-json
+      <<: *data-yaml
+      mountPath: /etc/test/data.json
+    data-toml: &data-toml
+      <<: *data-yaml
+      mountPath: /etc/test/data.toml
   service:
     type: ClusterIP
     ports:
       nodePort:
   baseUrl: /
-  cookieSecret: mock
-  publicURL: mock-public-url
-  nodeSelector:
-    node-type: mock
   activeServerLimit: 3
   deploymentStrategy:
     type: Recreate
@@ -41,6 +79,8 @@ hub:
   annotations:
     mock: mock
   image:
+    name: dummy-name
+    tag: dummy-tag
     pullSecrets: [c]
   initContainers:
     - name: mock-init-container-name
@@ -75,6 +115,8 @@ hub:
   imagePullPolicy: Always
   pdb:
     enabled: true
+    maxUnavailable: 1
+    minAvailable: null
   networkPolicy:
     enabled: true
     egress:
@@ -96,18 +138,15 @@ hub:
       value: "mock-taint-to-tolerates-value"
       effect: "NoExecute"
 
-
 rbac:
   enabled: true
 
-
 proxy:
-  secretToken: '0000000000000000000000000000000000000000000000000000000000000000'
   service:
     extraPorts:
-    - name: ssh
-      port: 22
-      targetPort: ssh
+      - name: ssh
+        port: 22
+        targetPort: ssh
     type: LoadBalancer
     labels:
       MOCK_PROXY_ENV: mock
@@ -145,10 +184,12 @@ proxy:
       allowedIngressPorts: [http, https]
     pdb:
       enabled: true
+      maxUnavailable: 1
+      minAvailable: 1
   traefik:
     extraPorts:
-    - name: ssh
-      containerPort: 8022
+      - name: ssh
+        containerPort: 8022
     labels:
       hub.jupyter.org/test-label: mock
     resources:
@@ -181,6 +222,8 @@ proxy:
       allowedIngressPorts: [http, https]
     pdb:
       enabled: true
+      maxUnavailable: null
+      minAvailable: 1
   secretSync:
     resources:
       requests:
@@ -198,16 +241,15 @@ proxy:
     type: letsencrypt
     #type: letsencrypt, manual, offload, secret
     letsencrypt:
-      contactEmail: 'e@domain.com'
+      contactEmail: "e@domain.com"
     manual:
       key: mock-key
       cert: mock-cert
     secret:
-      name: 'mock-secret-name'
-      key: 'mock-key'
-      crt: 'mock-crt'
+      name: "mock-secret-name"
+      key: "mock-key"
+      crt: "mock-crt"
     hosts: [domain.com]
-
 
 singleuser:
   profileList:
@@ -230,49 +272,49 @@ singleuser:
   extraNodeAffinity:
     required:
       - matchExpressions:
-        - key: hub.jupyter.org/test-required-node
-          operator: In
-          values: [test]
+          - key: hub.jupyter.org/test-required-node
+            operator: In
+            values: [test]
     preferred:
       - weight: 10
         preference:
           matchExpressions:
-          - key: hub.jupyter.org/test-preferred-node
-            operator: In
-            values: [test]
+            - key: hub.jupyter.org/test-preferred-node
+              operator: In
+              values: [test]
   extraPodAffinity:
     required:
       - labelSelector:
           matchExpressions:
-          - key: hub.jupyter.org/test-required-pod
-            operator: In
-            values: [test]
+            - key: hub.jupyter.org/test-required-pod
+              operator: In
+              values: [test]
         topologyKey: failure-domain.beta.kubernetes.io/zone
     preferred:
       - weight: 10
         podAffinityTerm:
           labelSelector:
             matchExpressions:
-            - key: hub.jupyter.org/test-preferred-pod
-              operator: In
-              values: [test]
+              - key: hub.jupyter.org/test-preferred-pod
+                operator: In
+                values: [test]
           topologyKey: kubernetes.io/hostname
   extraPodAntiAffinity:
     required:
       - labelSelector:
           matchExpressions:
-          - key: hub.jupyter.org/test-required-anti-pod
-            operator: In
-            values: [test]
+            - key: hub.jupyter.org/test-required-anti-pod
+              operator: In
+              values: [test]
         topologyKey: failure-domain.beta.kubernetes.io/zone
     preferred:
       - weight: 10
         podAffinityTerm:
           labelSelector:
             matchExpressions:
-            - key: hub.jupyter.org/test-preferred-anti-pod
-              operator: In
-              values: [test]
+              - key: hub.jupyter.org/test-preferred-anti-pod
+                operator: In
+                values: [test]
           topologyKey: kubernetes.io/hostname
   cloudMetadata:
     blockWithIptables: true
@@ -310,7 +352,7 @@ singleuser:
     extraVolumeMounts: []
     static:
       pvcName:
-      subPath: '{username}'
+      subPath: "{username}"
     capacity: 10Gi
     homeMountPath: /home/jovyan
     dynamic:
@@ -333,11 +375,11 @@ singleuser:
   cmd: jupyterhub-singleuser
   defaultUrl: /
 
-
 scheduling:
   userScheduler:
     enabled: true
     replicas: 1
+    logLevel: 10
     image:
       name: gcr.io/google_containers/kube-scheduler-amd64
       tag: v1.11.2
@@ -352,6 +394,14 @@ scheduling:
         operator: "Equal"
         value: "mock-taint-to-tolerates-value"
         effect: "NoExecute"
+    plugins:
+      score:
+        disabled:
+          - name: SelectorSpread
+        enabled:
+          - name: NodePreferAvoidPods
+            weight: 161051
+          - name: NodeAffinity
   podPriority:
     enabled: true
   userPlaceholder:
@@ -364,7 +414,6 @@ scheduling:
   userPods:
     nodeAffinity:
       matchNodePurpose: require
-
 
 prePuller:
   extraTolerations:
@@ -401,7 +450,6 @@ prePuller:
       name: mock-user/mock-image2
       tag: mock-tag
 
-
 ingress:
   enabled: true
   annotations:
@@ -415,7 +463,6 @@ ingress:
         - mocked1.domain.name
         - mocked2.domain.name
 
-
 cull:
   enabled: true
   users: true
@@ -424,6 +471,10 @@ cull:
   concurrency: 10
   maxAge: 28800
 
-
 debug:
   enabled: true
+
+global: {}
+
+custom:
+  myCustomStuff: [hello]

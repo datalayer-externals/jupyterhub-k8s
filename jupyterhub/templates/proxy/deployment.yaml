@@ -20,15 +20,15 @@ spec:
         {{- include "jupyterhub.matchLabels" . | nindent 8 }}
         hub.jupyter.org/network-access-hub: "true"
         hub.jupyter.org/network-access-singleuser: "true"
-        {{- if .Values.proxy.labels }}
-        {{- .Values.proxy.labels | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- with .Values.proxy.labels }}
+        {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
         {{- end }}
       annotations:
         # This lets us autorestart when the secret changes!
         checksum/hub-secret: {{ include (print $.Template.BasePath "/hub/secret.yaml") . | sha256sum }}
         checksum/proxy-secret: {{ include (print $.Template.BasePath "/proxy/secret.yaml") . | sha256sum }}
-        {{- if .Values.proxy.annotations }}
-        {{- .Values.proxy.annotations | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- with .Values.proxy.annotations }}
+        {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
         {{- end }}
     spec:
       terminationGracePeriodSeconds: 60
@@ -36,7 +36,18 @@ spec:
       priorityClassName: {{ include "jupyterhub.priority.fullname" . }}
       {{- end }}
       nodeSelector: {{ toJson .Values.proxy.chp.nodeSelector }}
-      tolerations: {{ toJson .Values.proxy.chp.tolerations }}
+      tolerations:
+        - key: hub.jupyter.org/dedicated
+          operator: Equal
+          value: core
+          effect: NoSchedule
+        - key: hub.jupyter.org_dedicated
+          operator: Equal
+          value: core
+          effect: NoSchedule
+        {{- with .Values.proxy.chp.tolerations }}
+        {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
+        {{- end }}
       {{- include "jupyterhub.coreAffinity" . | nindent 6 }}
       {{- if $manualHTTPS }}
       volumes:
@@ -90,14 +101,19 @@ spec:
               mountPath: /etc/chp/tls
               readOnly: true
           {{- end }}
+          {{- with .Values.proxy.chp.resources }}
           resources:
-            {{- .Values.proxy.chp.resources | toYaml | trimSuffix "\n" | nindent 12 }}
+            {{- . | toYaml | trimSuffix "\n" | nindent 12 }}
+          {{- end }}
           env:
             - name: CONFIGPROXY_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "jupyterhub.hub-secret.fullname" . }}
-                  key: proxy.token
+                  # NOTE: References the chart managed k8s Secret even if
+                  #       hub.existingSecret is specified to avoid using the
+                  #       lookup function on the user managed k8s Secret.
+                  name: {{ include "jupyterhub.hub.fullname" . }}
+                  key: hub.config.ConfigurableHTTPProxy.auth_token
             {{- include "jupyterhub.extraEnv" .Values.proxy.chp.extraEnv | nindent 12 }}
           {{- with .Values.proxy.chp.image.pullPolicy }}
           imagePullPolicy: {{ . }}
