@@ -50,12 +50,11 @@ spec:
       {{- if and (not .hook) .Values.scheduling.podPriority.enabled }}
       priorityClassName: {{ include "jupyterhub.user-placeholder-priority.fullname" . }}
       {{- end }}
-      tolerations:
-        {{- include "jupyterhub.userTolerations" . | nindent 8 }}
-        {{- with .Values.prePuller.extraTolerations  }}
-        {{- . | toYaml | trimSuffix "\n" | nindent 8 }}
-        {{- end }}
       nodeSelector: {{ toJson .Values.singleuser.nodeSelector }}
+      {{- with concat .Values.scheduling.userPods.tolerations .Values.singleuser.extraTolerations .Values.prePuller.extraTolerations }}
+      tolerations:
+        {{- . | toYaml | nindent 8 }}
+      {{- end }}
       {{- if include "jupyterhub.userNodeAffinityRequired" . }}
       affinity:
         nodeAffinity:
@@ -184,7 +183,7 @@ spec:
     Returns a rendered k8s DaemonSet resource: continuous-image-puller
 */}}
 {{- define "jupyterhub.imagePuller.daemonset.continuous" -}}
-    {{- $_ := merge (dict "hook" true "componentPrefix" "hook-") . }}
+    {{- $_ := merge (dict "hook" false "componentPrefix" "continuous-") . }}
     {{- include "jupyterhub.imagePuller.daemonset" $_ }}
 {{- end }}
 
@@ -193,7 +192,7 @@ spec:
     Returns a rendered k8s DaemonSet resource: hook-image-puller
 */}}
 {{- define "jupyterhub.imagePuller.daemonset.hook" -}}
-    {{- $_ := merge (dict "hook" false "componentPrefix" "continuous-") . }}
+    {{- $_ := merge (dict "hook" true "componentPrefix" "hook-") . }}
     {{- include "jupyterhub.imagePuller.daemonset" $_ }}
 {{- end }}
 
