@@ -54,7 +54,7 @@ hub:
     ##   deployment of JupyterHub on k8s is to be possible.
     type: Recreate
   db:
-    type: sqlite-pvc
+    type: postgres
     upgrade:
     pvc:
       annotations: {}
@@ -65,6 +65,8 @@ hub:
       subPath:
       storageClassName:
     url:
+    endpoint:
+    username:
     password:
   labels: {}
   annotations: {}
@@ -78,8 +80,8 @@ hub:
   extraVolumes: []
   extraVolumeMounts: []
   image:
-    name: jupyterhub/k8s-hub
-    tag: "set-by-chartpress"
+    name: datalayer/jupyterhub-hub
+    tag: "0.11.1-n292.h7428994e"
     pullPolicy:
     pullSecrets: []
   resources:
@@ -272,8 +274,8 @@ proxy:
       runAsGroup: 65534 # nobody group
       allowPrivilegeEscalation: false
     image:
-      name: jupyterhub/k8s-secret-sync
-      tag: "set-by-chartpress"
+      name: datalayer/jupyterhub-secret-sync
+      tag: "0.11.1-n292.h7428994e"
       pullPolicy:
       pullSecrets: []
     resources: {}
@@ -312,8 +314,8 @@ singleuser:
     preferred: []
   networkTools:
     image:
-      name: jupyterhub/k8s-network-tools
-      tag: "set-by-chartpress"
+      name: datalayer/jupyterhub-network-tools
+      tag: "0.11.1-n292.h7428994e"
       pullPolicy:
       pullSecrets: []
   cloudMetadata:
@@ -366,8 +368,8 @@ singleuser:
       volumeNameTemplate: volume-{username}{servername}
       storageAccessModes: [ReadWriteOnce]
   image:
-    name: jupyterhub/k8s-singleuser-sample
-    tag: "set-by-chartpress"
+    name: datalayer/jupyterhub-singleuser-sample
+    tag: "0.11.1-n292.h7428994e"
     pullPolicy:
     pullSecrets: []
   startTimeout: 300
@@ -477,8 +479,8 @@ prePuller:
     pullOnlyOnChanges: false
     # image and the configuration below relates to the hook-image-awaiter Job
     image:
-      name: jupyterhub/k8s-image-awaiter
-      tag: "set-by-chartpress"
+      name: datalayer/jupyterhub-image-awaiter
+      tag: "0.11.1-n292.h7428994e"
       pullPolicy:
       pullSecrets: []
     containerSecurityContext:

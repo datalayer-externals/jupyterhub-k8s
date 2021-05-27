@@ -60,13 +60,22 @@ c.JupyterHub.tornado_settings = {
 
 # configure the hub db connection
 db_type = get_config("hub.db.type")
+db_endpoint = get_secret_value("hub.db.endpoint", None)
+db_username = get_secret_value("hub.db.username", None)
+db_password = get_secret_value("hub.db.password", None)
+db_port = '5432'
+db_name = 'jupyterhub'
 if db_type == "sqlite-pvc":
     c.JupyterHub.db_url = "sqlite:///jupyterhub.sqlite"
 elif db_type == "sqlite-memory":
     c.JupyterHub.db_url = "sqlite://"
-else:
-    set_config_if_not_none(c.JupyterHub, "db_url", "hub.db.url")
-db_password = get_secret_value("hub.db.password", None)
+elif db_type == "mysql":
+#    set_config_if_not_none(c.JupyterHub, "db_url", "hub.db.url")
+    db_url = f'mysql+pymysql://{db_username}:{db_password}@{db_endpoint}:{db_port}/{db_name}'
+    c.JupyterHub.db_url = db_url
+elif db_type == "postgres":
+    db_url = f'postgresql+psycopg2://{db_username}:{db_password}@{db_endpoint}:{db_port}/{db_name}'
+    c.JupyterHub.db_url = db_url
 if db_password is not None:
     if db_type == "mysql":
         os.environ["MYSQL_PWD"] = db_password
